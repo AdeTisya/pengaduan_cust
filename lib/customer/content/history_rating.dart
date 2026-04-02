@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class HistoryRating extends StatelessWidget {
-  const HistoryRating({Key? key}) : super(key: key);
+  const HistoryRating({super.key});
 
   @override
   Widget build(BuildContext context) {

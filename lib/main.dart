@@ -1,7 +1,10 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'auth/login_screen.dart';
-import 'contentbuttom/navigation_button.dart';
-import 'content/history_rating.dart';
+import 'customer/contentbuttom/navigation_button.dart';
+import 'customer/content/history_rating.dart';
+import 'teknisi/contenbuttom/navigation_button_teknisi.dart'; // ← tambah ini
 
 void main() {
   runApp(const MyApp());
@@ -29,6 +32,17 @@ class MyApp extends StatelessWidget {
           case '/history_rating':
             page = const HistoryRating();
             break;
+
+          // ─── Customer ──────────────────────────────
+          case '/customer/dashboard':
+            page = const MainScaffold(initialIndex: 0);
+            break;
+
+          // ─── Teknisi ───────────────────────────────
+          case '/teknisi/dashboard':
+            page = const MainScaffoldTeknisi(initialIndex: 0);
+            break;
+
           default:
             page = const LoginScreen();
         }

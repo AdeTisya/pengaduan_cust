@@ -1,7 +1,68 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
-class DashboardCust extends StatelessWidget {
+class DashboardCust extends StatefulWidget {
   const DashboardCust({super.key});
+
+  @override
+  State<DashboardCust> createState() => _DashboardCustState();
+}
+
+class _DashboardCustState extends State<DashboardCust> {
+  int totalPengaduan = 0;
+  int menunggu = 0;
+  int diproses = 0;
+  int selesai = 0;
+  int ditolak = 0;
+  List<Map<String, dynamic>> grafikBulanan = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDashboard();
+  }
+
+  Future<void> _fetchDashboard() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      final response = await http.get(
+        Uri.parse('http://localhost:8000/api/customer/dashboard'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final data = body['data'];
+        final statistik = data['statistik'];
+        final grafik = data['grafik_pengaduan'] as List;
+
+        setState(() {
+          totalPengaduan = statistik['total_pengaduan'] ?? 0;
+          menunggu = statistik['menunggu'] ?? 0;
+          diproses = statistik['diproses'] ?? 0;
+          selesai = statistik['selesai'] ?? 0;
+          ditolak = statistik['ditolak'] ?? 0;
+          grafikBulanan = grafik
+              .map((e) => {
+                    'bulan': (e['bulan'] ?? '').toString(),
+                    'total': int.tryParse(e['total'].toString()) ?? 0,
+                  })
+              .toList();
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,9 +163,9 @@ class DashboardCust extends StatelessWidget {
                 ),
               ),
 
-              // Fix: Transform.translate untuk efek overlap (negative margin tidak support di Flutter Web)
+              // Transform.translate offset dikurangi agar tidak ada jarak kosong besar
               Transform.translate(
-                offset: const Offset(0, -120),
+                offset: const Offset(0, -40),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(27, 0, 27, 0),
                   child: Material(
@@ -156,9 +217,10 @@ class DashboardCust extends StatelessWidget {
                                   ],
                                 ),
                                 const SizedBox(height: 13),
-                                const Text(
-                                  '0',
-                                  style: TextStyle(
+                                // --- FETCH: total pengaduan ---
+                                Text(
+                                  isLoading ? '-' : '$totalPengaduan',
+                                  style: const TextStyle(
                                     color: Color(0xFF0059FF),
                                     fontSize: 32,
                                     fontWeight: FontWeight.w600,
@@ -178,23 +240,24 @@ class DashboardCust extends StatelessWidget {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceEvenly,
                                   children: [
+                                    // --- FETCH: status counts ---
                                     _buildStatusColumn(
-                                      count: '0',
+                                      count: isLoading ? '-' : '$menunggu',
                                       label: 'Menunggu',
                                       color: const Color(0xFFDDC000),
                                     ),
                                     _buildStatusColumn(
-                                      count: '0',
+                                      count: isLoading ? '-' : '$diproses',
                                       label: 'Diproses',
                                       color: const Color(0xFF0059FF),
                                     ),
                                     _buildStatusColumn(
-                                      count: '0',
+                                      count: isLoading ? '-' : '$selesai',
                                       label: 'Selesai',
                                       color: const Color(0xFF328E6E),
                                     ),
                                     _buildStatusColumn(
-                                      count: '0',
+                                      count: isLoading ? '-' : '$ditolak',
                                       label: 'Ditolak',
                                       color: const Color(0xFFFF0000),
                                     ),
@@ -292,8 +355,8 @@ class DashboardCust extends StatelessWidget {
                 ),
               ),
 
-              // SizedBox dikurangi 60 karena Transform.translate menggeser ke atas 60px
-              const SizedBox(height: 110),
+              // SizedBox disesuaikan dengan offset baru (-40)
+              const SizedBox(height: 10),
 
               // Graph section
               Container(
@@ -328,21 +391,26 @@ class DashboardCust extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
+                    // --- FETCH: grafik bulanan ---
                     Container(
                       height: 200,
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Center(
-                        child: Text(
-                          'Graph akan ditampilkan di sini',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
+                      child: isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : grafikBulanan.isEmpty
+                              ? Center(
+                                  child: Text(
+                                    'Belum ada data grafik',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                )
+                              : _buildGrafik(),
                     ),
                   ],
                 ),
@@ -352,6 +420,51 @@ class DashboardCust extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildGrafik() {
+    final maxTotal = grafikBulanan
+        .map((e) => e['total'] as int)
+        .fold(0, (a, b) => a > b ? a : b);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: grafikBulanan.map((item) {
+          final total = (item['total'] as int?) ?? 0;
+          final ratio = maxTotal == 0 ? 0.0 : total / maxTotal;
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                '$total',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0059FF),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                width: 28,
+                height: 120 * ratio + 10,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E2A5E),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                item['bulan'],
+                style: const TextStyle(fontSize: 12, color: Color(0xFF464646)),
+              ),
+            ],
+          );
+        }).toList(),
       ),
     );
   }

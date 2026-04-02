@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:logger/logger.dart';
+import '../services/auth_service.dart';
+import '../models/user.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,15 +13,84 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
+  bool _isLoading = false; 
+  
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final logger = Logger();
+  final AuthService _authService = AuthService(); 
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    // Validasi input
+    if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
+      _showErrorDialog('Email dan password tidak boleh kosong');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Call API login
+      final result = await _authService.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (result['success']) {
+        final User user = result['user'];
+        
+        logger.i('Login berhasil: ${user.nama} (${user.role.name})');
+        
+        if (!mounted) return;
+        
+        // Navigate berdasarkan role
+        if (user.role.name == 'customer') {
+          Navigator.pushReplacementNamed(context, '/customer/dashboard');
+        } else if (user.role.name == 'teknisi') {
+          Navigator.pushReplacementNamed(context, '/teknisi/dashboard');
+        } else {
+          _showErrorDialog('Role tidak dikenali: ${user.role.name}');
+        }
+      } else {
+        _showErrorDialog(result['message']);
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      logger.e('Error login: $e');
+      _showErrorDialog('Terjadi kesalahan: ${e.toString()}');
+    }
+  }
+
+  // ✅ TAMBAH: Show error dialog
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -93,6 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             label: 'Email',
                             controller: _emailController,
                             obscureText: false,
+                            keyboardType: TextInputType.emailAddress, 
                           ),
 
                           const SizedBox(height: 20),
@@ -140,6 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
     required String label,
     required TextEditingController controller,
     required bool obscureText,
+    TextInputType keyboardType = TextInputType.text, 
   }) {
     return Container(
       width: double.infinity,
@@ -173,6 +246,8 @@ class _LoginScreenState extends State<LoginScreen> {
             TextFormField(
               controller: controller,
               obscureText: obscureText,
+              keyboardType: keyboardType, 
+              enabled: !_isLoading, 
               decoration: const InputDecoration(
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.zero,
@@ -222,6 +297,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: !_isPasswordVisible,
+                    enabled: !_isLoading, 
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.zero,
@@ -234,7 +310,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(width: 10),
             GestureDetector(
-              onTap: () {
+              onTap: _isLoading ? null : () { 
                 setState(() {
                   _isPasswordVisible = !_isPasswordVisible;
                 });
@@ -255,10 +331,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
-          // ✅ Navigasi ke MainScaffold (yang punya bottom nav)
-          Navigator.pushReplacementNamed(context, '/home');
-        },
+        onPressed: _isLoading ? null : _handleLogin, 
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF7C93C3),
           foregroundColor: Colors.white,
@@ -267,11 +340,21 @@ class _LoginScreenState extends State<LoginScreen> {
             borderRadius: BorderRadius.circular(15),
           ),
           elevation: 3,
+          disabledBackgroundColor: const Color(0xFF7C93C3).withValues(alpha: 0.6), 
         ),
-        child: const Text(
-          'Sign in',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-        ),
+        child: _isLoading // ✅ TAMBAH: Loading indicator
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Text(
+                'Sign in',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
       ),
     );
   }
