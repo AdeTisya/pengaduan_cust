@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../services/auth_service.dart';
 import '../../../models/user.dart';
 import '../../../config/api_config.dart';
+import '../content/rating_history_teknisi.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -69,9 +70,7 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Konfirmasi Logout',
           style: TextStyle(
@@ -86,10 +85,7 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Batal',
-              style: TextStyle(color: Colors.grey),
-            ),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -99,10 +95,7 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
               ),
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Logout',
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -112,11 +105,7 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
       await _authService.logout();
       if (mounted) {
         // Kembali ke halaman login dan hapus semua route
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/login',
-          (route) => false,
-        );
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
       }
     }
   }
@@ -176,8 +165,11 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
                             onTap: _handleLogout,
                             child: const Column(
                               children: [
-                                Icon(Icons.logout,
-                                    color: Colors.white, size: 28),
+                                Icon(
+                                  Icons.logout,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
                                 SizedBox(height: 2),
                                 Text(
                                   'Logout',
@@ -278,8 +270,11 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
                             // Header kartu
                             const Row(
                               children: [
-                                Icon(Icons.list_alt,
-                                    size: 28, color: Color(0xFF1E2A5E)),
+                                Icon(
+                                  Icons.list_alt,
+                                  size: 28,
+                                  color: Color(0xFF1E2A5E),
+                                ),
                                 SizedBox(width: 6),
                                 Text(
                                   'Total Pengaduan',
@@ -320,7 +315,6 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
 
                             const SizedBox(height: 28),
 
-                            // Status row
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
@@ -328,6 +322,11 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
                                   '${_getStat('menunggu')}',
                                   'Menunggu',
                                   const Color(0xFFDDC000),
+                                ),
+                                _buildStatItem(
+                                  '${_getStat('diterima')}',
+                                  'Diterima',
+                                  const Color(0xFF7C3AED),
                                 ),
                                 _buildStatItem(
                                   '${_getStat('diproses')}',
@@ -354,8 +353,11 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.star,
-                                      color: Color(0xFFDDC000), size: 22),
+                                  const Icon(
+                                    Icons.star,
+                                    color: Color(0xFFDDC000),
+                                    size: 22,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     'Rata-rata Rating: ${_dashboardData?['rata_rating'] ?? 0}',
@@ -389,8 +391,11 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
                           ),
                           child: const Row(
                             children: [
-                              Icon(Icons.history,
-                                  color: Colors.white, size: 26),
+                              Icon(
+                                Icons.history,
+                                color: Colors.white,
+                                size: 26,
+                              ),
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -408,30 +413,41 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E2A5E),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 28,
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.star, color: Colors.white, size: 26),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'History Rating',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontFamily: 'Inclusive Sans',
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const RatingHistoryTeknisi(),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E2A5E),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 28,
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.star, color: Colors.white, size: 26),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'History Rating',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontFamily: 'Inclusive Sans',
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),

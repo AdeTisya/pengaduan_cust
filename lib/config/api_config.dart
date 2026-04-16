@@ -20,6 +20,8 @@ class ApiConfig {
   // Teknisi endpoints
   static const String teknisiDashboard = '$baseUrl/teknisi/dashboard';
   static const String teknisiPengaduan = '$baseUrl/teknisi/pengaduan';
+  // lib/config/api_config.dart
+  static String get sendWhatsapp => '$baseUrl/teknisi/notifikasi/whatsapp';
   static const String teknisiProfile = '$baseUrl/teknisi/profile';
 
   // Headers untuk JSON

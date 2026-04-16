@@ -13,6 +13,7 @@ class DashboardCust extends StatefulWidget {
 class _DashboardCustState extends State<DashboardCust> {
   int totalPengaduan = 0;
   int menunggu = 0;
+  int diterima = 0;
   int diproses = 0;
   int selesai = 0;
   int ditolak = 0;
@@ -47,14 +48,17 @@ class _DashboardCustState extends State<DashboardCust> {
         setState(() {
           totalPengaduan = statistik['total_pengaduan'] ?? 0;
           menunggu = statistik['menunggu'] ?? 0;
+          diterima = statistik['diterima'] ?? 0;
           diproses = statistik['diproses'] ?? 0;
           selesai = statistik['selesai'] ?? 0;
           ditolak = statistik['ditolak'] ?? 0;
           grafikBulanan = grafik
-              .map((e) => {
-                    'bulan': (e['bulan'] ?? '').toString(),
-                    'total': int.tryParse(e['total'].toString()) ?? 0,
-                  })
+              .map(
+                (e) => {
+                  'bulan': (e['bulan'] ?? '').toString(),
+                  'total': int.tryParse(e['total'].toString()) ?? 0,
+                },
+              )
               .toList();
           isLoading = false;
         });
@@ -92,8 +96,12 @@ class _DashboardCustState extends State<DashboardCust> {
                             decoration: BoxDecoration(
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color.fromARGB(255, 55, 66, 111)
-                                      .withValues(alpha: 0.3),
+                                  color: const Color.fromARGB(
+                                    255,
+                                    55,
+                                    66,
+                                    111,
+                                  ).withValues(alpha: 0.3),
                                   offset: const Offset(0, 4),
                                   blurRadius: 4,
                                 ),
@@ -203,8 +211,11 @@ class _DashboardCustState extends State<DashboardCust> {
                               children: [
                                 Row(
                                   children: [
-                                    Icon(Icons.description,
-                                        size: 30, color: Colors.black),
+                                    Icon(
+                                      Icons.description,
+                                      size: 30,
+                                      color: Colors.black,
+                                    ),
                                     const SizedBox(width: 8),
                                     const Text(
                                       'Total Pengaduan',
@@ -217,7 +228,7 @@ class _DashboardCustState extends State<DashboardCust> {
                                   ],
                                 ),
                                 const SizedBox(height: 13),
-                                // --- FETCH: total pengaduan ---
+
                                 Text(
                                   isLoading ? '-' : '$totalPengaduan',
                                   style: const TextStyle(
@@ -240,11 +251,17 @@ class _DashboardCustState extends State<DashboardCust> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceEvenly,
                                   children: [
-                                    // --- FETCH: status counts ---
                                     _buildStatusColumn(
                                       count: isLoading ? '-' : '$menunggu',
                                       label: 'Menunggu',
                                       color: const Color(0xFFDDC000),
+                                    ),
+                                    _buildStatusColumn(
+                                      count: isLoading
+                                          ? '-'
+                                          : '$diterima', // tambah ini
+                                      label: 'Diterima',
+                                      color: const Color(0xFF7C3AED),
                                     ),
                                     _buildStatusColumn(
                                       count: isLoading ? '-' : '$diproses',
@@ -287,17 +304,24 @@ class _DashboardCustState extends State<DashboardCust> {
                                 InkWell(
                                   onTap: () {},
                                   borderRadius: BorderRadius.circular(8),
-                                  splashColor:
-                                      Colors.white.withValues(alpha: 0.3),
-                                  highlightColor:
-                                      Colors.white.withValues(alpha: 0.1),
+                                  splashColor: Colors.white.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  highlightColor: Colors.white.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.history,
-                                            color: Colors.white, size: 24),
+                                        Icon(
+                                          Icons.history,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
                                         const SizedBox(width: 6),
                                         const Text(
                                           'History pengaduan',
@@ -312,26 +336,36 @@ class _DashboardCustState extends State<DashboardCust> {
                                   ),
                                 ),
                                 Container(
-                                    width: 2,
-                                    height: 30,
-                                    color: Colors.white),
+                                  width: 2,
+                                  height: 30,
+                                  color: Colors.white,
+                                ),
                                 InkWell(
                                   onTap: () {
-                                    Navigator.of(context, rootNavigator: true)
-                                        .pushNamed('/history_rating');
+                                    Navigator.of(
+                                      context,
+                                      rootNavigator: true,
+                                    ).pushNamed('/history_rating');
                                   },
                                   borderRadius: BorderRadius.circular(8),
-                                  splashColor:
-                                      Colors.white.withValues(alpha: 0.3),
-                                  highlightColor:
-                                      Colors.white.withValues(alpha: 0.1),
+                                  splashColor: Colors.white.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  highlightColor: Colors.white.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.star,
-                                            color: Colors.white, size: 24),
+                                        Icon(
+                                          Icons.star,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
                                         const SizedBox(width: 6),
                                         const Text(
                                           'History Rating',
@@ -401,16 +435,16 @@ class _DashboardCustState extends State<DashboardCust> {
                       child: isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : grafikBulanan.isEmpty
-                              ? Center(
-                                  child: Text(
-                                    'Belum ada data grafik',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                )
-                              : _buildGrafik(),
+                          ? Center(
+                              child: Text(
+                                'Belum ada data grafik',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            )
+                          : _buildGrafik(),
                     ),
                   ],
                 ),

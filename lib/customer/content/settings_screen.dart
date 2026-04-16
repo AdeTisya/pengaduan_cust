@@ -1,4 +1,7 @@
+// lib/customer/content/settings_screen.dart
+
 import 'package:flutter/material.dart';
+import 'change_password_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -11,7 +14,7 @@ class SettingsScreen extends StatelessWidget {
         top: false,
         child: Column(
           children: [
-            // Header — sama style seperti Dashboard
+            // Header
             Container(
               width: double.infinity,
               color: const Color(0xFF1E2A5E),
@@ -60,7 +63,7 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // Logout Button — gradient merah keren
+                  // Logout Button
                   GestureDetector(
                     onTap: () {
                       Navigator.pushReplacementNamed(context, '/login');
@@ -113,11 +116,48 @@ class SettingsScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     const SizedBox(height: 8),
-                    _buildSettingItem(Icons.lock_outline, 'Ubah Password'),
-                    _buildSettingItem(Icons.notifications_outlined, 'Notifikasi'),
-                    _buildSettingItem(Icons.language, 'Bahasa'),
-                    _buildSettingItem(Icons.info_outline, 'Tentang Aplikasi'),
-                    _buildSettingItem(Icons.help_outline, 'Bantuan'),
+
+                    // ── Ubah Password — aktif ──────────────────
+                    _buildSettingItem(
+                      context,
+                      icon: Icons.lock_outline,
+                      title: 'Ubah Password',
+                      subtitle: 'Ganti password akun Anda',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ChangePasswordScreen(),
+                          ),
+                        );
+                      },
+                    ),
+
+                    // ── Item lainnya ───────────────────────────
+                    _buildSettingItem(
+                      context,
+                      icon: Icons.notifications_outlined,
+                      title: 'Notifikasi',
+                      subtitle: 'Kelola preferensi notifikasi',
+                    ),
+                    _buildSettingItem(
+                      context,
+                      icon: Icons.language,
+                      title: 'Bahasa',
+                      subtitle: 'Indonesia',
+                    ),
+                    _buildSettingItem(
+                      context,
+                      icon: Icons.info_outline,
+                      title: 'Tentang Aplikasi',
+                      subtitle: 'Versi 1.0.0',
+                    ),
+                    _buildSettingItem(
+                      context,
+                      icon: Icons.help_outline,
+                      title: 'Bantuan',
+                      subtitle: 'Pusat bantuan & FAQ',
+                    ),
                   ],
                 ),
               ),
@@ -128,7 +168,15 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingItem(IconData icon, String title) {
+  Widget _buildSettingItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    VoidCallback? onTap,
+  }) {
+    final bool isActive = onTap != null;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -136,28 +184,59 @@ class SettingsScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: 0.06),
             offset: const Offset(0, 2),
             blurRadius: 8,
           ),
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        leading: Icon(icon, color: const Color(0xFF1E2A5E), size: 24),
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 4,
+        ),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E2A5E).withValues(
+              alpha: isActive ? 0.1 : 0.05,
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            icon,
+            color: isActive
+                ? const Color(0xFF1E2A5E)
+                : const Color(0xFF1E2A5E).withValues(alpha: 0.4),
+            size: 22,
           ),
         ),
-        trailing: const Icon(
-          Icons.chevron_right,
-          color: Color(0xFF1E2A5E),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: isActive ? Colors.black : Colors.grey,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'Inter',
+          ),
         ),
-        onTap: () {},
+        subtitle: subtitle != null
+            ? Text(
+                subtitle,
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 12,
+                  fontFamily: 'Inter',
+                ),
+              )
+            : null,
+        trailing: Icon(
+          Icons.chevron_right,
+          color: isActive
+              ? const Color(0xFF1E2A5E)
+              : Colors.grey[300],
+        ),
+        onTap: onTap,
       ),
     );
   }

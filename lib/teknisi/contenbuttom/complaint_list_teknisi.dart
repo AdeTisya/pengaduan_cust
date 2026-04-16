@@ -1,10 +1,12 @@
-// lib/teknisi/content/complaint_list_teknisi.dart
+// lib/teknisi/contenbuttom/complaint_list_teknisi.dart
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../config/api_config.dart';
 import '../../services/auth_service.dart';
+import '../../utils/notification_template.dart';
+import '../content/complain_detail.dart';
 
 class ComplaintListTeknisi extends StatefulWidget {
   const ComplaintListTeknisi({super.key});
@@ -61,7 +63,11 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
 
       final response = await http.get(
         uri,
-        headers: ApiConfig.headers(token: token),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
       );
 
       final Map<String, dynamic> responseData = jsonDecode(response.body);
@@ -93,10 +99,12 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
     }
   }
 
-  // ─── Ubah Status Pengaduan ─────────────────────────────────────────────────
+  // ─── Kirim WhatsApp Notification ───────────────────────────────────────────
 
-  Future<void> _updateStatus({
-    required int pengaduanId,
+  Future<void> _kirimNotifikasiWA({
+    required String nomorHp,
+    required String kodePengaduan,
+    required String namaCustomer,
     required String status,
     String? catatan,
   }) async {
@@ -104,14 +112,74 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
       final token = await _authService.getToken();
       if (token == null) return;
 
-      final response = await http.put(
-        Uri.parse('${ApiConfig.teknisiPengaduan}/$pengaduanId'),
-        headers: ApiConfig.headers(token: token),
+      // Bersihkan nomor HP (hapus karakter non-digit)
+      String nomor = nomorHp.replaceAll(RegExp(r'\D'), '');
+      // Ganti awalan 0 dengan 62
+      if (nomor.startsWith('0')) {
+        nomor = '62${nomor.substring(1)}';
+      }
+
+      if (nomor.isEmpty) {
+        debugPrint('Nomor HP tidak tersedia, notifikasi WA dilewati');
+        return;
+      }
+
+      final pesan = NotificationTemplate.ubahStatus(
+        kodePengaduan: kodePengaduan,
+        namaCustomer: namaCustomer,
+        status: status,
+        catatan: catatan,
+      );
+
+      final response = await http.post(
+        Uri.parse(ApiConfig.sendWhatsapp),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({
-          'status': status,
-          if (catatan != null && catatan.isNotEmpty) 'catatan': catatan,
+          'target': nomor,
+          'message': pesan,
         }),
       );
+
+      final data = jsonDecode(response.body);
+      debugPrint('WA Response ${response.statusCode}: $data');
+    } catch (e) {
+      // Notifikasi WA gagal tidak menghentikan alur utama
+      debugPrint('Gagal kirim WA: $e');
+    }
+  }
+
+  // ─── Ubah Status Pengaduan ─────────────────────────────────────────────────
+
+  Future<void> _updateStatus({
+    required int pengaduanId,
+    required String status,
+    required Map<String, dynamic> item,
+    String? alasanDitolak,
+  }) async {
+    try {
+      final token = await _authService.getToken();
+      if (token == null) return;
+
+      final Map<String, dynamic> body = {'status': status};
+      if (status == 'ditolak' && alasanDitolak != null && alasanDitolak.isNotEmpty) {
+        body['alasan_ditolak'] = alasanDitolak;
+      }
+
+      final response = await http.put(
+        Uri.parse('${ApiConfig.teknisiPengaduan}/$pengaduanId/update-status'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+
+      debugPrint('UpdateStatus ${response.statusCode}: ${response.body}');
 
       final Map<String, dynamic> responseData = jsonDecode(response.body);
 
@@ -124,11 +192,47 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
             backgroundColor: Colors.green,
           ),
         );
-        _fetchPengaduan(); // refresh list
+
+        // ── Kirim WhatsApp setelah status berhasil diubah ──
+        final rawCustomer = item['customer'] ?? item['user'] ?? item['pelapor'];
+        if (rawCustomer is Map) {
+          final String nomorHp = (rawCustomer['no_hp'] ??
+                  rawCustomer['nomor_hp'] ??
+                  rawCustomer['phone'] ??
+                  rawCustomer['telepon'] ??
+                  '')
+              .toString();
+
+          final String namaCustomer = (rawCustomer['nama'] ??
+                  rawCustomer['name'] ??
+                  'Pelanggan')
+              .toString();
+
+          final String kodePengaduan =
+              (item['kode_pengaduan'] ?? '-').toString();
+
+          await _kirimNotifikasiWA(
+            nomorHp: nomorHp,
+            kodePengaduan: kodePengaduan,
+            namaCustomer: namaCustomer,
+            status: status,
+            catatan: alasanDitolak,
+          );
+        }
+        // ──────────────────────────────────────────────────
+
+        _fetchPengaduan();
       } else {
+        String errorMsg = responseData['message'] ?? 'Gagal mengubah status';
+        if (responseData['errors'] != null) {
+          final errors = responseData['errors'] as Map<String, dynamic>;
+          errorMsg = errors.values.first is List
+              ? errors.values.first.first.toString()
+              : errors.values.first.toString();
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(responseData['message'] ?? 'Gagal mengubah status'),
+            content: Text(errorMsg),
             backgroundColor: Colors.red,
           ),
         );
@@ -149,14 +253,28 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
   void _showUbahStatusSheet(Map<String, dynamic> item) {
     final int id = item['id'] as int;
     final String statusSaat = item['status'] ?? 'menunggu';
-    final TextEditingController catatanController = TextEditingController();
+    final TextEditingController alasanController = TextEditingController();
     String? statusDipilih;
 
-    // Opsi status yang bisa dipilih teknisi
     final List<Map<String, dynamic>> statusOptions = [
-      {'value': 'diproses', 'label': 'Diproses', 'icon': Icons.build_circle_outlined, 'color': const Color(0xFF004085)},
-      {'value': 'selesai', 'label': 'Selesai', 'icon': Icons.check_circle_outline, 'color': const Color(0xFF155724)},
-      {'value': 'ditolak', 'label': 'Ditolak', 'icon': Icons.cancel_outlined, 'color': const Color(0xFF721C24)},
+      {
+        'value': 'diproses',
+        'label': 'Diproses',
+        'icon': Icons.build_circle_outlined,
+        'color': const Color(0xFF004085),
+      },
+      {
+        'value': 'selesai',
+        'label': 'Selesai',
+        'icon': Icons.check_circle_outline,
+        'color': const Color(0xFF155724),
+      },
+      {
+        'value': 'ditolak',
+        'label': 'Ditolak',
+        'icon': Icons.cancel_outlined,
+        'color': const Color(0xFF721C24),
+      },
     ];
 
     showModalBottomSheet(
@@ -217,15 +335,16 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
                       final isSelected = statusDipilih == opt['value'];
                       return GestureDetector(
                         onTap: () => setSheetState(
-                            () => statusDipilih = opt['value'] as String),
+                          () => statusDipilih = opt['value'] as String,
+                        ),
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 10),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? primaryBlue
-                                : Colors.grey[100],
+                            color: isSelected ? primaryBlue : Colors.grey[100],
                             borderRadius: BorderRadius.circular(12),
                             border: isSelected
                                 ? null
@@ -244,9 +363,7 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
                               Text(
                                 opt['label'] as String,
                                 style: TextStyle(
-                                  color: isSelected
-                                      ? Colors.white
-                                      : primaryBlue,
+                                  color: isSelected ? Colors.white : primaryBlue,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                   fontFamily: 'Inter',
@@ -256,7 +373,7 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
                                 const Spacer(),
                                 const Icon(Icons.check,
                                     color: Colors.white, size: 18),
-                              ]
+                              ],
                             ],
                           ),
                         ),
@@ -265,39 +382,99 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
 
                     const SizedBox(height: 8),
 
-                    // Catatan
-                    Text(
-                      'Catatan (opsional)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: primaryBlue,
-                        fontFamily: 'Inter',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
-                      child: TextField(
-                        controller: catatanController,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          hintText: 'Tulis catatan atau keterangan...',
-                          border: InputBorder.none,
-                          hintStyle: TextStyle(
-                              color: Colors.grey, fontFamily: 'Inter'),
+                    // Input alasan jika ditolak
+                    if (statusDipilih == 'ditolak') ...[
+                      Text(
+                        'Alasan Ditolak',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: primaryBlue,
+                          fontFamily: 'Inter',
                         ),
-                        style: const TextStyle(fontFamily: 'Inter'),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        child: TextField(
+                          controller: alasanController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            hintText: 'Tulis alasan penolakan...',
+                            border: InputBorder.none,
+                            hintStyle: TextStyle(
+                                color: Colors.grey, fontFamily: 'Inter'),
+                          ),
+                          style: const TextStyle(fontFamily: 'Inter'),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
 
-                    const SizedBox(height: 20),
+                    // Info foto untuk status selesai
+                    if (statusDipilih == 'selesai') ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD4EDDA),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.info_outline,
+                                color: Color(0xFF155724), size: 18),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Untuk menyelesaikan dengan foto bukti, gunakan menu Detail Pengaduan.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF155724),
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // Info WA akan dikirim
+                    if (statusDipilih != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFA5D6A7)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.chat_bubble_outline,
+                                color: Color(0xFF2E7D32), size: 18),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Notifikasi WhatsApp akan otomatis dikirim ke customer.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF2E7D32),
+                                  fontFamily: 'Inter',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
 
                     // Tombol simpan
                     SizedBox(
@@ -319,7 +496,9 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
                                 _updateStatus(
                                   pengaduanId: id,
                                   status: statusDipilih!,
-                                  catatan: catatanController.text.trim(),
+                                  item: item, // ← pass item untuk ambil no_hp
+                                  alasanDitolak:
+                                      alasanController.text.trim(),
                                 );
                               },
                         child: Text(
@@ -396,7 +575,9 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
                     child: Container(
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: isSelected ? primaryBlue : Colors.white,
                         borderRadius: BorderRadius.circular(24),
@@ -424,8 +605,7 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
           Expanded(
             child: _isLoading
                 ? Center(
-                    child: CircularProgressIndicator(color: primaryBlue),
-                  )
+                    child: CircularProgressIndicator(color: primaryBlue))
                 : _errorMessage != null
                     ? Center(
                         child: Column(
@@ -434,9 +614,11 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
                             Icon(Icons.error_outline,
                                 color: Colors.red[300], size: 48),
                             const SizedBox(height: 12),
-                            Text(_errorMessage!,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.grey)),
+                            Text(
+                              _errorMessage!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.grey),
+                            ),
                             const SizedBox(height: 16),
                             ElevatedButton(
                               onPressed: _fetchPengaduan,
@@ -468,12 +650,15 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
                             onRefresh: _fetchPengaduan,
                             color: primaryBlue,
                             child: ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 24, 16, 100),
                               itemCount: _pengaduanList.length,
                               separatorBuilder: (_, __) =>
                                   const SizedBox(height: 16),
-                              itemBuilder: (context, index) =>
-                                  _buildComplaintCard(_pengaduanList[index]),
+                              itemBuilder: (context, index) {
+                                final item = _pengaduanList[index];
+                                return _buildComplaintCard(item);
+                              },
                             ),
                           ),
           ),
@@ -497,111 +682,127 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
                 .toString()
             : '-';
 
-    // Nama customer / pelapor
     final rawCustomer = item['customer'] ?? item['user'] ?? item['pelapor'];
     final String namaCustomer = rawCustomer is Map
         ? (rawCustomer['nama'] ?? rawCustomer['name'] ?? '-').toString()
         : '-';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primaryBlue, width: 2),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Kode + Status
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                kode,
-                style: TextStyle(
-                  color: primaryBlue,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              _buildStatusBadge(status),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // Nama pelapor
-          if (namaCustomer != '-')
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ComplainDetail(item: item)),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: primaryBlue, width: 2),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Kode + Status
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.person_outline, size: 14, color: Colors.grey[500]),
-                const SizedBox(width: 4),
-                Text(
-                  namaCustomer,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                    fontFamily: 'Inter',
-                  ),
-                ),
-              ],
-            ),
-
-          const SizedBox(height: 8),
-
-          // Deskripsi
-          Text(
-            deskripsi,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF666666),
-              fontSize: 12,
-              fontFamily: 'Inter',
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Kategori + Tombol Ubah
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                kategori,
-                style: TextStyle(
-                  color: primaryBlue,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              GestureDetector(
-                onTap: () => _showUbahStatusSheet(item),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: primaryBlue,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Text(
-                    'Ubah',
+                Expanded(
+                  child: Text(
+                    kode,
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
+                      color: primaryBlue,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       fontFamily: 'Inter',
                     ),
                   ),
                 ),
+                const SizedBox(width: 8),
+                _buildStatusBadge(status),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // Nama pelapor
+            if (namaCustomer != '-')
+              Row(
+                children: [
+                  Icon(Icons.person_outline,
+                      size: 14, color: Colors.grey[500]),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      namaCustomer,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ],
+
+            const SizedBox(height: 8),
+
+            // Deskripsi
+            Text(
+              deskripsi,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF666666),
+                fontSize: 12,
+                fontFamily: 'Inter',
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Kategori + Tombol Ubah
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    kategori,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: primaryBlue,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'Inter',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _showUbahStatusSheet(item),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: primaryBlue,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: const Text(
+                      'Ubah',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -610,11 +811,12 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
 
   String _labelStatus(String status) {
     switch (status.toLowerCase()) {
-      case 'menunggu': return 'Menunggu';
-      case 'diproses': return 'Diproses';
-      case 'selesai': return 'Selesai';
-      case 'ditolak': return 'Ditolak';
-      default: return status;
+      case 'menunggu':  return 'Menunggu';
+      case 'diproses':  return 'Diproses';
+      case 'selesai':   return 'Selesai';
+      case 'ditolak':   return 'Ditolak';
+      case 'diterima':  return 'Diterima';
+      default:          return status;
     }
   }
 
@@ -638,6 +840,10 @@ class _ComplaintListTeknisiState extends State<ComplaintListTeknisi> {
       case 'ditolak':
         bgColor = const Color(0xFFF8D7DA);
         textColor = const Color(0xFF721C24);
+        break;
+      case 'diterima':
+        bgColor = const Color(0xFFE2D9F3);
+        textColor = const Color(0xFF4A235A);
         break;
       default:
         bgColor = const Color(0xFFF0F0F0);
