@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../models/user.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   // Singleton pattern
@@ -21,11 +22,11 @@ class AuthService {
       final response = await http.post(
         Uri.parse(ApiConfig.login),
         headers: ApiConfig.headers(),
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode({'email': email, 'password': password}),
       );
+
+      debugPrint('LOGIN STATUS CODE: ${response.statusCode}');
+      debugPrint('LOGIN RAW BODY: ${response.body}');
 
       final Map<String, dynamic> responseData = jsonDecode(response.body);
 
@@ -45,11 +46,18 @@ class AuthService {
           'user': user,
         };
       } else {
-        // Login gagal
-        return {
-          'success': false,
-          'message': responseData['message'] ?? 'Login gagal',
-        };
+        // Login gagal — sertakan detail errors (jika ada) untuk debugging
+        String message = responseData['message'] ?? 'Login gagal';
+
+        if (responseData['errors'] != null) {
+          final errors = responseData['errors'] as Map<String, dynamic>;
+          final detailLines = errors.entries
+              .map((e) => '${e.key}: ${(e.value as List).join(', ')}')
+              .join('\n');
+          message = '$message\n\n$detailLines';
+        }
+
+        return {'success': false, 'message': message};
       }
     } catch (e) {
       return {
@@ -63,7 +71,7 @@ class AuthService {
   Future<bool> logout() async {
     try {
       final token = await getToken();
-      
+
       if (token != null) {
         // Call logout API to blacklist token
         await http.post(
@@ -89,7 +97,7 @@ class AuthService {
   Future<User?> getCurrentUser() async {
     try {
       final token = await getToken();
-      
+
       if (token == null) return null;
 
       final response = await http.get(
@@ -99,17 +107,17 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
-        
+
         if (responseData['status'] == 'success') {
           final User user = User.fromJson(responseData['data']);
-          
+
           // Update saved user data
           await saveUser(user);
-          
+
           return user;
         }
       }
-      
+
       return null;
     } catch (e) {
       return null;
@@ -120,7 +128,7 @@ class AuthService {
   Future<String?> refreshToken() async {
     try {
       final token = await getToken();
-      
+
       if (token == null) return null;
 
       final response = await http.post(
@@ -130,14 +138,14 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
-        
+
         if (responseData['status'] == 'success') {
           final String newToken = responseData['data']['token'];
           await saveToken(newToken);
           return newToken;
         }
       }
-      
+
       return null;
     } catch (e) {
       return null;
@@ -172,11 +180,11 @@ class AuthService {
   Future<User?> getUser() async {
     final prefs = await SharedPreferences.getInstance();
     final String? userJson = prefs.getString('user');
-    
+
     if (userJson != null) {
       return User.fromJson(jsonDecode(userJson));
     }
-    
+
     return null;
   }
 
@@ -202,7 +210,7 @@ class AuthService {
   Future<bool> handleTokenExpiration() async {
     // Try to refresh token
     final newToken = await refreshToken();
-    
+
     if (newToken != null) {
       return true; // Token refreshed successfully
     } else {

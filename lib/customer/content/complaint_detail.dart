@@ -1,4 +1,7 @@
 // lib/customer/content/complaint_detail.dart
+//
+// PERUBAHAN: Menampilkan "Foto Bukti Penyelesaian" dari teknisi
+// ketika status = selesai dan ada field foto_penyelesaian di API.
 
 import 'dart:convert';
 import 'dart:math' as math;
@@ -9,7 +12,7 @@ import '../../services/auth_service.dart';
 import 'rating_screen.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
-// STATUS STEPPER WIDGET
+// STATUS STEPPER WIDGET  (tidak berubah dari versi sebelumnya)
 // ══════════════════════════════════════════════════════════════════════════════
 
 class StatusStepper extends StatefulWidget {
@@ -43,7 +46,8 @@ class _StatusStepperState extends State<StatusStepper>
       key: 'diterima',
       label: 'Diterima',
       icon: Icons.verified_outlined,
-      tooltip: 'Pengaduan sudah diterima, teknisi akan segera melakukan perbaikan, mohon ditunggu',
+      tooltip:
+          'Pengaduan sudah diterima, teknisi akan segera melakukan perbaikan, mohon ditunggu',
     ),
     _StepData(
       key: 'diproses',
@@ -67,31 +71,31 @@ class _StatusStepperState extends State<StatusStepper>
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat();
-
     _spinController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     )..repeat();
-
     _checkController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     )..forward();
-
     _connectorController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..forward();
 
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.5).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
-    );
-    _spinAnim = Tween<double>(begin: 0.0, end: 2 * math.pi).animate(
-      _spinController,
-    );
-    _checkAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _checkController, curve: Curves.easeOut),
-    );
+    _pulseAnim = Tween<double>(
+      begin: 1.0,
+      end: 1.5,
+    ).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeOut));
+    _spinAnim = Tween<double>(
+      begin: 0.0,
+      end: 2 * math.pi,
+    ).animate(_spinController);
+    _checkAnim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _checkController, curve: Curves.easeOut));
     _connectorAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _connectorController, curve: Curves.easeInOut),
     );
@@ -136,24 +140,19 @@ class _StatusStepperState extends State<StatusStepper>
         children: [
           Row(
             children: List.generate(_steps.length * 2 - 1, (i) {
-              // Connector line
               if (i.isOdd) {
                 final stepIdx = i ~/ 2;
                 final isDone = !isDitolak && stepIdx < activeIdx;
                 return Expanded(
                   child: AnimatedBuilder(
                     animation: _connectorAnim,
-                    builder: (_, __) {
-                      return _ConnectorLine(
-                        filled: isDone,
-                        fillProgress: isDone ? _connectorAnim.value : 0.0,
-                      );
-                    },
+                    builder: (_, __) => _ConnectorLine(
+                      filled: isDone,
+                      fillProgress: isDone ? _connectorAnim.value : 0.0,
+                    ),
                   ),
                 );
               }
-
-              // Step circle
               final stepIdx = i ~/ 2;
               final step = _steps[stepIdx];
               final bool isActive = !isDitolak && stepIdx == activeIdx;
@@ -168,7 +167,6 @@ class _StatusStepperState extends State<StatusStepper>
               );
             }),
           ),
-          // ── Info banner status aktif ──────────────────────────
           if (!isDitolak && activeIdx >= 0) ...[
             const SizedBox(height: 12),
             _buildInfoBanner(_steps[activeIdx]),
@@ -248,20 +246,18 @@ class _StatusStepperState extends State<StatusStepper>
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       preferBelow: false,
       child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: circleSize + 16,
-          height: circleSize + 16,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Pulse ring for active step
-              if (isActive)
-                AnimatedBuilder(
-                  animation: _pulseAnim,
-                  builder: (_, __) {
-                    return Transform.scale(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: circleSize + 16,
+            height: circleSize + 16,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (isActive)
+                  AnimatedBuilder(
+                    animation: _pulseAnim,
+                    builder: (_, __) => Transform.scale(
                       scale: _pulseAnim.value,
                       child: Container(
                         width: circleSize,
@@ -269,53 +265,52 @@ class _StatusStepperState extends State<StatusStepper>
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: circleBg.withValues(alpha: 1.5 - _pulseAnim.value),
+                            color: circleBg.withValues(
+                              alpha: 1.5 - _pulseAnim.value,
+                            ),
                             width: 2,
                           ),
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  ),
+                Container(
+                  width: circleSize,
+                  height: circleSize,
+                  decoration: BoxDecoration(
+                    color: circleBg,
+                    shape: BoxShape.circle,
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: circleBg.withValues(alpha: 0.4),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: _buildStepIcon(
+                    step: step,
+                    isActive: isActive,
+                    isDone: isDone,
+                    iconColor: iconColor,
+                  ),
                 ),
-
-              // Main circle
-              Container(
-                width: circleSize,
-                height: circleSize,
-                decoration: BoxDecoration(
-                  color: circleBg,
-                  shape: BoxShape.circle,
-                  boxShadow: isActive
-                      ? [
-                          BoxShadow(
-                            color: circleBg.withValues(alpha: 0.4),
-                            blurRadius: 10,
-                            spreadRadius: 2,
-                          )
-                        ]
-                      : [],
-                ),
-                child: _buildStepIcon(
-                  step: step,
-                  isActive: isActive,
-                  isDone: isDone,
-                  iconColor: iconColor,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          step.label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-            color: labelColor,
-            fontFamily: 'Inter',
+          const SizedBox(height: 4),
+          Text(
+            step.label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+              color: labelColor,
+              fontFamily: 'Inter',
+            ),
           ),
-        ),
-      ],
+        ],
       ),
     );
   }
@@ -394,78 +389,51 @@ class _StatusStepperState extends State<StatusStepper>
     required bool isDone,
     required Color iconColor,
   }) {
-    // Done: animated checkmark
     if (isDone) {
       return AnimatedBuilder(
         animation: _checkAnim,
-        builder: (_, __) {
-          return CustomPaint(
-            size: const Size(28, 28),
-            painter: _CheckPainter(
-              progress: 1.0,
-              color: iconColor,
-              strokeWidth: 2.5,
-            ),
-          );
-        },
+        builder: (_, __) => CustomPaint(
+          size: const Size(28, 28),
+          painter: _CheckPainter(
+            progress: 1.0,
+            color: iconColor,
+            strokeWidth: 2.5,
+          ),
+        ),
       );
     }
 
-    // Active: specific animations per step
     if (isActive) {
       switch (step.key) {
         case 'menunggu':
           return _BouncingDots(color: iconColor);
-
         case 'diproses':
           return AnimatedBuilder(
             animation: _spinAnim,
-            builder: (_, __) {
-              return Transform.rotate(
-                angle: _spinAnim.value,
-                child: Icon(Icons.sync_rounded, color: iconColor, size: 26),
-              );
-            },
+            builder: (_, __) => Transform.rotate(
+              angle: _spinAnim.value,
+              child: Icon(Icons.sync_rounded, color: iconColor, size: 26),
+            ),
           );
-
         case 'diterima':
-          return AnimatedBuilder(
-            animation: _checkAnim,
-            builder: (_, __) {
-              return CustomPaint(
-                size: const Size(28, 28),
-                painter: _CheckPainter(
-                  progress: _checkAnim.value,
-                  color: iconColor,
-                  strokeWidth: 2.5,
-                ),
-              );
-            },
-          );
-
         case 'selesai':
           return AnimatedBuilder(
             animation: _checkAnim,
-            builder: (_, __) {
-              return CustomPaint(
-                size: const Size(28, 28),
-                painter: _CheckPainter(
-                  progress: _checkAnim.value,
-                  color: iconColor,
-                  strokeWidth: 2.8,
-                ),
-              );
-            },
+            builder: (_, __) => CustomPaint(
+              size: const Size(28, 28),
+              painter: _CheckPainter(
+                progress: _checkAnim.value,
+                color: iconColor,
+                strokeWidth: step.key == 'selesai' ? 2.8 : 2.5,
+              ),
+            ),
           );
       }
     }
 
-    // Pending: static icon
     return Icon(step.icon, color: iconColor, size: 24);
   }
 }
-
-// ── Data class ────────────────────────────────────────────────────────────────
 
 class _StepData {
   final String key;
@@ -479,8 +447,6 @@ class _StepData {
     required this.tooltip,
   });
 }
-
-// ── Connector line ─────────────────────────────────────────────────────────
 
 class _ConnectorLine extends StatelessWidget {
   final bool filled;
@@ -512,8 +478,6 @@ class _ConnectorLine extends StatelessWidget {
   }
 }
 
-// ── Checkmark painter ──────────────────────────────────────────────────────
-
 class _CheckPainter extends CustomPainter {
   final double progress;
   final Color color;
@@ -535,10 +499,6 @@ class _CheckPainter extends CustomPainter {
 
     final cx = size.width / 2;
     final cy = size.height / 2;
-
-    // Checkmark path: two segments
-    // Segment 1: from start to mid (shorter arm)
-    // Segment 2: from mid to end (longer arm)
     final startPoint = Offset(cx - 8, cy);
     final midPoint = Offset(cx - 2, cy + 6);
     final endPoint = Offset(cx + 9, cy - 7);
@@ -564,7 +524,6 @@ class _CheckPainter extends CustomPainter {
         midPoint.dy + (endPoint.dy - midPoint.dy) * t,
       );
     }
-
     canvas.drawPath(path, paint);
   }
 
@@ -575,8 +534,6 @@ class _CheckPainter extends CustomPainter {
   bool shouldRepaint(_CheckPainter old) =>
       old.progress != progress || old.color != color;
 }
-
-// ── Bouncing dots for "Menunggu" ───────────────────────────────────────────
 
 class _BouncingDots extends StatefulWidget {
   final Color color;
@@ -603,12 +560,12 @@ class _BouncingDotsState extends State<_BouncingDots>
     );
     _anims = _controllers
         .map(
-          (c) => Tween<double>(begin: 0, end: -8).animate(
-            CurvedAnimation(parent: c, curve: Curves.easeInOut),
-          ),
+          (c) => Tween<double>(
+            begin: 0,
+            end: -8,
+          ).animate(CurvedAnimation(parent: c, curve: Curves.easeInOut)),
         )
         .toList();
-
     for (int i = 0; i < 3; i++) {
       Future.delayed(Duration(milliseconds: i * 160), () {
         if (mounted) _controllers[i].repeat(reverse: true);
@@ -651,7 +608,7 @@ class _BouncingDotsState extends State<_BouncingDots>
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// COMPLAINT DETAIL SCREEN
+// COMPLAINT DETAIL SCREEN  ← YANG DIMODIFIKASI
 // ══════════════════════════════════════════════════════════════════════════════
 
 class ComplaintDetail extends StatefulWidget {
@@ -710,18 +667,15 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
       final Map<String, dynamic> responseData = jsonDecode(response.body);
 
       if (response.statusCode == 200 && responseData['status'] == 'success') {
-        setState(() {
-          _detail = responseData['data'];
-        });
+        setState(() => _detail = responseData['data']);
       } else {
-        setState(() {
-          _errorMessage = responseData['message'] ?? 'Gagal memuat detail';
-        });
+        setState(
+          () =>
+              _errorMessage = responseData['message'] ?? 'Gagal memuat detail',
+        );
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
-      });
+      setState(() => _errorMessage = 'Terjadi kesalahan: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -729,10 +683,12 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
 
   String _fixImageUrl(String url) {
     final baseUri = Uri.parse(ApiConfig.baseUrl);
-    final baseHost = '${baseUri.scheme}://${baseUri.host}:${baseUri.port}';
+    final baseHost = '${baseUri.scheme}://${baseUri.host}';
+
     return url
         .replaceFirst('http://localhost', baseHost)
-        .replaceFirst('http://127.0.0.1', baseHost);
+        .replaceFirst('http://127.0.0.1', baseHost)
+        .replaceFirst('http://10.0.2.2', baseHost);
   }
 
   String _formatTanggal(String? tanggal) {
@@ -769,7 +725,6 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ──────────────────────────────────────────
             Container(
               decoration: BoxDecoration(
                 color: primaryBlue,
@@ -805,13 +760,9 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
                 ],
               ),
             ),
-
-            // ── Content ─────────────────────────────────────────
             Expanded(
               child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(color: primaryBlue),
-                    )
+                  ? Center(child: CircularProgressIndicator(color: primaryBlue))
                   : _errorMessage != null
                   ? Center(
                       child: Column(
@@ -868,11 +819,20 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
               .toString()
         : '-';
 
+    // Foto bukti laporan (dari customer saat membuat pengaduan)
     final rawFoto = d['foto_bukti'];
-    final String? fotoBukti =
-        (rawFoto != null && rawFoto.toString().isNotEmpty)
+    final String? fotoBukti = (rawFoto != null && rawFoto.toString().isNotEmpty)
         ? _fixImageUrl(rawFoto.toString())
         : null;
+
+    // ── BARU: Foto bukti penyelesaian dari teknisi ────────────────────────
+    final rawFotoPenyelesaian = d['foto_penyelesaian'];
+    final String? fotoPenyelesaian =
+        (rawFotoPenyelesaian != null &&
+            rawFotoPenyelesaian.toString().isNotEmpty)
+        ? _fixImageUrl(rawFotoPenyelesaian.toString())
+        : null;
+    // ─────────────────────────────────────────────────────────────────────
 
     final String? responTeknisi = d['respon_teknisi'] ?? d['catatan'];
 
@@ -882,16 +842,18 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
         : null;
 
     final bool sudahRating = d['rating'] != null;
-    final bool bisaRating =
-        status.toLowerCase() == 'selesai' && !sudahRating;
+    final bool bisaRating = status.toLowerCase() == 'selesai' && !sudahRating;
 
     final rawRating = d['rating'];
-    final int? nilaiRating =
-        rawRating is Map ? rawRating['rating'] as int? : null;
-    final String? saranRating =
-        rawRating is Map ? rawRating['saran']?.toString() : null;
-    final String? balasanTeknisi =
-        rawRating is Map ? rawRating['balasan_teknisi']?.toString() : null;
+    final int? nilaiRating = rawRating is Map
+        ? rawRating['rating'] as int?
+        : null;
+    final String? saranRating = rawRating is Map
+        ? rawRating['saran']?.toString()
+        : null;
+    final String? balasanTeknisi = rawRating is Map
+        ? rawRating['balasan_teknisi']?.toString()
+        : null;
 
     return RefreshIndicator(
       onRefresh: _fetchDetail,
@@ -902,7 +864,7 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Status Card dengan Stepper ──────────────────────
+            // ── Status Card ───────────────────────────────────
             _buildCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -936,12 +898,9 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
                       _buildStatusBadge(status),
                     ],
                   ),
-
-                  // ── Animated Stepper ──────────────────────────
                   const SizedBox(height: 16),
                   const Divider(height: 1, color: Color(0xFFF0F0F0)),
                   const SizedBox(height: 16),
-
                   if (status.toLowerCase() != 'ditolak')
                     StatusStepper(status: status)
                   else
@@ -952,15 +911,12 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
 
             const SizedBox(height: 12),
 
-            // ── Info Pengaduan ──────────────────────────────────
+            // ── Info Pengaduan ────────────────────────────────
             _buildCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionTitle(
-                    'Informasi Pengaduan',
-                    Icons.info_outline,
-                  ),
+                  _buildSectionTitle('Informasi Pengaduan', Icons.info_outline),
                   const SizedBox(height: 12),
                   _buildRow('Kategori', kategori),
                   const Divider(height: 20, color: Color(0xFFEEEEEE)),
@@ -969,7 +925,7 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
               ),
             ),
 
-            // ── Foto Bukti ──────────────────────────────────────
+            // ── Foto Bukti Laporan (dari customer) ───────────
             if (fotoBukti != null) ...[
               const SizedBox(height: 12),
               _buildCard(
@@ -978,64 +934,77 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
                   children: [
                     _buildSectionTitle('Foto Bukti', Icons.photo_outlined),
                     const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        fotoBukti,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            height: 180,
-                            color: Colors.grey[100],
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: primaryBlue,
-                                value: loadingProgress.expectedTotalBytes !=
-                                        null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                    : null,
-                              ),
-                            ),
-                          );
-                        },
-                        errorBuilder: (_, __, ___) => Container(
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.broken_image,
-                                  color: Colors.grey[400],
-                                  size: 40,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Gagal memuat foto',
-                                  style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    _buildNetworkImage(fotoBukti),
                   ],
                 ),
               ),
             ],
 
-            // ── Teknisi ─────────────────────────────────────────
+            // ── BARU: Foto Bukti Penyelesaian (dari teknisi) ─
+            if (fotoPenyelesaian != null) ...[
+              const SizedBox(height: 12),
+              _buildCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle(
+                      'Foto Bukti Penyelesaian',
+                      Icons.task_alt_rounded,
+                    ),
+                    const SizedBox(height: 4),
+                    // Keterangan singkat
+                    Text(
+                      'Foto ini dikirim oleh teknisi sebagai bukti pengaduan telah diselesaikan.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontFamily: 'Inter',
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Badge "Terverifikasi"
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFF1D9E75).withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.verified,
+                            size: 13,
+                            color: Color(0xFF1D9E75),
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Dikirim oleh Teknisi',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF0F6E56),
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildNetworkImage(fotoPenyelesaian),
+                  ],
+                ),
+              ),
+            ],
+
+            // ── Teknisi ───────────────────────────────────────
             if (namaTeknisi != null) ...[
               const SizedBox(height: 12),
               _buildCard(
@@ -1053,7 +1022,7 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
               ),
             ],
 
-            // ── Respon Teknisi ──────────────────────────────────
+            // ── Respon Teknisi ────────────────────────────────
             if (responTeknisi != null && responTeknisi.isNotEmpty) ...[
               const SizedBox(height: 12),
               _buildCard(
@@ -1071,7 +1040,7 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
               ),
             ],
 
-            // ── Rating sudah ada ────────────────────────────────
+            // ── Rating sudah ada ──────────────────────────────
             if (sudahRating && nilaiRating != null) ...[
               const SizedBox(height: 12),
               _buildCard(
@@ -1081,15 +1050,14 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
                     _buildSectionTitle('Penilaian Kamu', Icons.star_outline),
                     const SizedBox(height: 12),
                     Row(
-                      children: List.generate(5, (i) {
-                        return Icon(
-                          i < nilaiRating
-                              ? Icons.star
-                              : Icons.star_border,
+                      children: List.generate(
+                        5,
+                        (i) => Icon(
+                          i < nilaiRating ? Icons.star : Icons.star_border,
                           color: const Color(0xFFDDC000),
                           size: 24,
-                        );
-                      }),
+                        ),
+                      ),
                     ),
                     if (saranRating != null && saranRating.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -1107,11 +1075,7 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
                       const Divider(height: 20, color: Color(0xFFEEEEEE)),
                       Row(
                         children: [
-                          Icon(
-                            Icons.reply,
-                            size: 14,
-                            color: Colors.grey[500],
-                          ),
+                          Icon(Icons.reply, size: 14, color: Colors.grey[500]),
                           const SizedBox(width: 6),
                           Text(
                             'Balasan Teknisi:',
@@ -1139,7 +1103,7 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
               ),
             ],
 
-            // ── Tombol Beri Rating ──────────────────────────────
+            // ── Tombol Beri Rating ────────────────────────────
             if (bisaRating) ...[
               const SizedBox(height: 24),
               SizedBox(
@@ -1160,9 +1124,7 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
                         builder: (_) => RatingScreen(pengaduan: _detail!),
                       ),
                     );
-                    if (result == true && mounted) {
-                      _fetchDetail();
-                    }
+                    if (result == true && mounted) _fetchDetail();
                   },
                   icon: const Icon(
                     Icons.star,
@@ -1182,6 +1144,55 @@ class _ComplaintDetailState extends State<ComplaintDetail> {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  // ── Shared image widget ──────────────────────────────────────────────────
+
+  Widget _buildNetworkImage(String url) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.network(
+        url,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            height: 180,
+            color: Colors.grey[100],
+            child: Center(
+              child: CircularProgressIndicator(
+                color: primaryBlue,
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                    : null,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (_, __, ___) => Container(
+          height: 120,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.broken_image, color: Colors.grey[400], size: 40),
+                const SizedBox(height: 8),
+                Text(
+                  'Gagal memuat foto',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -1,6 +1,7 @@
 // lib/main.dart
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'auth/login_screen.dart';
 import 'customer/contentbuttom/navigation_button.dart';
 import 'customer/content/history_rating.dart';
@@ -18,7 +19,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Kominfo App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.blue,
+        textTheme: GoogleFonts.notoSansTextTheme(),
+      ),
       home: const LoginScreen(),
       onGenerateRoute: (settings) {
         Widget page;

@@ -3,6 +3,7 @@ import '../../../services/auth_service.dart';
 import '../../../models/user.dart';
 import '../../../config/api_config.dart';
 import '../content/rating_history_teknisi.dart';
+import 'navigation_button_teknisi.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -380,34 +381,45 @@ class _DashboardTeknisiState extends State<DashboardTeknisi> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E2A5E),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 28,
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(
-                                Icons.history,
-                                color: Colors.white,
-                                size: 26,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const MainScaffoldTeknisi(initialIndex: 1),
                               ),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'History pengaduan',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontFamily: 'Inclusive Sans',
+                            );
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E2A5E),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 28,
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.history,
+                                  color: Colors.white,
+                                  size: 26,
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'History pengaduan',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontFamily: 'Inclusive Sans',
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),

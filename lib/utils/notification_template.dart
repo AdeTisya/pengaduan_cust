@@ -1,64 +1,62 @@
 class NotificationTemplate {
+  /// Pesan WA ketika teknisi mengubah status pengaduan.
+  ///
+  /// [fotoPenyelesaianUrl] — URL publik foto bukti penyelesaian.
+  /// Hanya disertakan ke pesan jika status == 'selesai' dan URL tidak kosong.
   static String ubahStatus({
     required String kodePengaduan,
     required String namaCustomer,
     required String status,
     String? catatan,
+    String? fotoPenyelesaianUrl,
   }) {
     final String labelStatus = _labelStatus(status);
-    final String emoji = _emojiStatus(status);
-    final String waktu = _formatWaktu(DateTime.now());
 
-    String pesan = '''
-$emoji *Notifikasi Pengaduan Internet - Kominfo Gunungkidul*
+    final StringBuffer sb = StringBuffer();
 
-Halo, *$namaCustomer*!
-
-Status pengaduan internet Anda telah diperbarui.
-
-📋 *Kode Pengaduan:* $kodePengaduan
-🔄 *Status Terbaru:* $labelStatus
-🕐 *Diperbarui:* $waktu
-''';
+    sb.writeln('Halo, *$namaCustomer*! 👋');
+    sb.writeln();
+    sb.writeln('Pengaduan Anda dengan kode *$kodePengaduan* '
+        'telah diperbarui statusnya menjadi:');
+    sb.writeln();
+    sb.writeln('📌 Status: *$labelStatus*');
 
     if (catatan != null && catatan.isNotEmpty) {
-      pesan += '\n📝 *Catatan Teknisi:*\n$catatan\n';
+      sb.writeln();
+      sb.writeln('📝 Catatan Teknisi:');
+      sb.writeln(catatan);
     }
 
-    pesan += '''
-Terima kasih telah menggunakan layanan internet Kominfo Kabupaten Gunungkidul.
-Hubungi kami jika ada pertanyaan lebih lanjut.
+    // Sertakan link foto bukti penyelesaian hanya jika status selesai
+    if (status.toLowerCase() == 'selesai' &&
+        fotoPenyelesaianUrl != null &&
+        fotoPenyelesaianUrl.isNotEmpty) {
+      sb.writeln();
+      sb.writeln('📷 Foto Bukti Penyelesaian:');
+      sb.writeln(fotoPenyelesaianUrl);
+    }
 
-_Pesan ini dikirim otomatis oleh Sistem Pengaduan Kominfo Gunungkidul._''';
+    sb.writeln();
+    sb.writeln('Terima kasih. '
+        'Jika ada pertanyaan, jangan ragu menghubungi kami kembali. 🙏');
 
-    return pesan;
+    return sb.toString().trim();
   }
 
   static String _labelStatus(String status) {
     switch (status.toLowerCase()) {
-      case 'diproses': return 'Sedang Diproses';
-      case 'selesai':  return 'Selesai / Terselesaikan';
-      case 'ditolak':  return 'Ditolak';
-      default:         return status;
+      case 'menunggu':
+        return 'Menunggu';
+      case 'diterima':
+        return 'Diterima';
+      case 'diproses':
+        return 'Diproses';
+      case 'selesai':
+        return 'Selesai ✅';
+      case 'ditolak':
+        return 'Ditolak ❌';
+      default:
+        return status;
     }
-  }
-
-  static String _emojiStatus(String status) {
-    switch (status.toLowerCase()) {
-      case 'diproses': return '🔧';
-      case 'selesai':  return '✅';
-      case 'ditolak':  return '❌';
-      default:         return '📢';
-    }
-  }
-
-  static String _formatWaktu(DateTime dt) {
-    const bulan = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
-    ];
-    return '${dt.day} ${bulan[dt.month]} ${dt.year}, '
-        '${dt.hour.toString().padLeft(2, '0')}:'
-        '${dt.minute.toString().padLeft(2, '0')}';
   }
 }

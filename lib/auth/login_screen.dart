@@ -116,6 +116,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const SizedBox(height: 30),
                       _buildLogo(),
+                      const SizedBox(height: 16),
+                      _buildTitleText(),
                     ],
                   ),
                 ),
@@ -205,6 +207,45 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTitleText() {
+    return Column(
+      children: [
+        const Text(
+          'SigapnetGK',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1E2A5E),
+            letterSpacing: 1.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Sistem Informasi Gangguan Jaringan',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF0100CC),
+            letterSpacing: 0.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Dinas Komunikasi dan Informatika GK',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.normal,
+            color: Colors.grey,
+            letterSpacing: 0.3,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 
@@ -342,7 +383,7 @@ class _LoginScreenState extends State<LoginScreen> {
           elevation: 3,
           disabledBackgroundColor: const Color(0xFF7C93C3).withValues(alpha: 0.6), 
         ),
-        child: _isLoading // ✅ TAMBAH: Loading indicator
+        child: _isLoading
             ? const SizedBox(
                 height: 20,
                 width: 20,

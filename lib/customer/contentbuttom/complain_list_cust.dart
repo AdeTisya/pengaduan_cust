@@ -39,8 +39,9 @@ class _ComplaintListState extends State<ComplaintList> {
   }
 
   // ─── Fetch dari API ────────────────────────────────────────────────────────
-
   Future<void> _fetchPengaduan() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -48,6 +49,9 @@ class _ComplaintListState extends State<ComplaintList> {
 
     try {
       final token = await _authService.getToken();
+
+      if (!mounted) return;
+
       if (token == null) {
         setState(() {
           _errorMessage = 'Sesi habis, silakan login kembali';
@@ -56,7 +60,6 @@ class _ComplaintListState extends State<ComplaintList> {
         return;
       }
 
-      // Bangun URL dengan query param status jika ada filter
       final statusFilter = _filterMap[selectedFilter];
       final uri = Uri.parse(ApiConfig.customerPengaduan).replace(
         queryParameters: statusFilter != null ? {'status': statusFilter} : null,
@@ -67,21 +70,22 @@ class _ComplaintListState extends State<ComplaintList> {
         headers: ApiConfig.headers(token: token),
       );
 
-      final Map<String, dynamic> responseData = jsonDecode(response.body);
+      if (!mounted) return;
+
+      final responseData = jsonDecode(response.body);
 
       if (response.statusCode == 200 && responseData['status'] == 'success') {
-        // Handle 2 kemungkinan struktur response:
-        // 1. data langsung array  : { "data": [...] }
-        // 2. pagination Laravel   : { "data": { "data": [...], "total": N } }
         final raw = responseData['data'];
+
         List<dynamic> data;
         if (raw is List) {
           data = raw;
         } else if (raw is Map && raw['data'] is List) {
-          data = raw['data'] as List<dynamic>;
+          data = raw['data'];
         } else {
           data = [];
         }
+
         setState(() {
           _pengaduanList = data.map((e) => e as Map<String, dynamic>).toList();
         });
@@ -91,11 +95,17 @@ class _ComplaintListState extends State<ComplaintList> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
-        _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
+        _errorMessage = 'Terjadi kesalahan: $e';
       });
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -159,65 +169,69 @@ class _ComplaintListState extends State<ComplaintList> {
                         ),
                       )
                     : _errorMessage != null
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.error_outline,
-                                    color: Colors.red[300], size: 48),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _errorMessage!,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.grey),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: _fetchPengaduan,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF1E2A5E),
-                                  ),
-                                  child: const Text(
-                                    'Coba Lagi',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                              ],
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.red[300],
+                              size: 48,
                             ),
-                          )
-                        : _pengaduanList.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.inbox_outlined,
-                                        color: Colors.grey[400], size: 64),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'Belum ada pengaduan',
-                                      style: TextStyle(
-                                        color: Colors.grey[500],
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : RefreshIndicator(
-                                onRefresh: _fetchPengaduan,
-                                color: const Color(0xFF1E2A5E),
-                                child: ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      16, 24, 16, 100),
-                                  itemCount: _pengaduanList.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(height: 12),
-                                  itemBuilder: (context, index) {
-                                    return _buildComplaintCard(
-                                        _pengaduanList[index]);
-                                  },
-                                ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _errorMessage!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _fetchPengaduan,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E2A5E),
                               ),
+                              child: const Text(
+                                'Coba Lagi',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _pengaduanList.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.inbox_outlined,
+                              color: Colors.grey[400],
+                              size: 64,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Belum ada pengaduan',
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _fetchPengaduan,
+                        color: const Color(0xFF1E2A5E),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
+                          itemCount: _pengaduanList.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            return _buildComplaintCard(_pengaduanList[index]);
+                          },
+                        ),
+                      ),
               ),
             ],
           ),
@@ -296,7 +310,8 @@ class _ComplaintListState extends State<ComplaintList> {
     String kategori = '-';
     final dynamic rawKategori = item['kategori'];
     if (rawKategori is Map) {
-      kategori = rawKategori['nama_kategori']?.toString() ??
+      kategori =
+          rawKategori['nama_kategori']?.toString() ??
           rawKategori['nama']?.toString() ??
           '-';
     } else if (rawKategori is String) {
@@ -362,7 +377,10 @@ class _ComplaintListState extends State<ComplaintList> {
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF1E2A5E),
                     borderRadius: BorderRadius.circular(8),

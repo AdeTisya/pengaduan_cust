@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../content/chatbot_page.dart';
+import '../../config/api_config.dart';
+import '../contentbuttom/navigation_button.dart';
 
 class DashboardCust extends StatefulWidget {
   const DashboardCust({super.key});
@@ -32,7 +35,7 @@ class _DashboardCustState extends State<DashboardCust> {
       final token = prefs.getString('token') ?? '';
 
       final response = await http.get(
-        Uri.parse('http://localhost:8000/api/customer/dashboard'),
+        Uri.parse(ApiConfig.customerDashboard),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
@@ -71,13 +74,34 @@ class _DashboardCustState extends State<DashboardCust> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      // ✅ floatingActionButton dipindah ke sini (level Scaffold)
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ChatbotPage()),
+          );
+        },
+        // 💡 Tambahkan properti color di sini untuk mengubah warna ikon
+        icon: const Icon(
+          Icons.support_agent,
+          color: Colors.white, // Silakan ganti dengan warna yang Anda inginkan
+        ),
+        label: const Text(
+          'Asisten',
+          style: TextStyle(
+            color: Colors.white,
+          ), // Opsional: jika ingin warna teksnya senada
+        ),
+        backgroundColor: const Color.fromARGB(255, 56, 70, 130),
+      ),
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Background biru dengan logo & logout
+              // Header biru dengan logo & logout
               Container(
                 width: double.infinity,
                 color: const Color(0xFF1E2A5E),
@@ -118,16 +142,9 @@ class _DashboardCustState extends State<DashboardCust> {
                         Container(
                           width: 84,
                           height: 250,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E2A5E),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF1E2A5E),
                             shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF1E2A5E),
-                                offset: const Offset(0, 4),
-                                blurRadius: 4,
-                              ),
-                            ],
                           ),
                         ),
                       ],
@@ -149,12 +166,12 @@ class _DashboardCustState extends State<DashboardCust> {
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.white, width: 1),
                           ),
-                          child: Row(
+                          child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.logout, color: Colors.white, size: 20),
-                              const SizedBox(width: 6),
-                              const Text(
+                              SizedBox(width: 6),
+                              Text(
                                 'Logout',
                                 style: TextStyle(
                                   color: Colors.white,
@@ -171,7 +188,6 @@ class _DashboardCustState extends State<DashboardCust> {
                 ),
               ),
 
-              // Transform.translate offset dikurangi agar tidak ada jarak kosong besar
               Transform.translate(
                 offset: const Offset(0, -40),
                 child: Padding(
@@ -187,19 +203,11 @@ class _DashboardCustState extends State<DashboardCust> {
                             color: Colors.black.withValues(alpha: 0.3),
                             offset: const Offset(0, 8),
                             blurRadius: 20,
-                            spreadRadius: 0,
                           ),
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.15),
                             offset: const Offset(0, 4),
                             blurRadius: 10,
-                            spreadRadius: 0,
-                          ),
-                          BoxShadow(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            offset: const Offset(0, -2),
-                            blurRadius: 6,
-                            spreadRadius: 0,
                           ),
                         ],
                       ),
@@ -209,15 +217,15 @@ class _DashboardCustState extends State<DashboardCust> {
                             padding: const EdgeInsets.fromLTRB(14, 16, 14, 0),
                             child: Column(
                               children: [
-                                Row(
+                                const Row(
                                   children: [
                                     Icon(
                                       Icons.description,
                                       size: 30,
                                       color: Colors.black,
                                     ),
-                                    const SizedBox(width: 8),
-                                    const Text(
+                                    SizedBox(width: 8),
+                                    Text(
                                       'Total Pengaduan',
                                       style: TextStyle(
                                         color: Colors.black,
@@ -228,7 +236,6 @@ class _DashboardCustState extends State<DashboardCust> {
                                   ],
                                 ),
                                 const SizedBox(height: 13),
-
                                 Text(
                                   isLoading ? '-' : '$totalPengaduan',
                                   style: const TextStyle(
@@ -243,7 +250,6 @@ class _DashboardCustState extends State<DashboardCust> {
                                   style: TextStyle(
                                     color: Color(0xFF464646),
                                     fontSize: 15,
-                                    fontWeight: FontWeight.w400,
                                   ),
                                 ),
                                 const SizedBox(height: 35),
@@ -257,9 +263,7 @@ class _DashboardCustState extends State<DashboardCust> {
                                       color: const Color(0xFFDDC000),
                                     ),
                                     _buildStatusColumn(
-                                      count: isLoading
-                                          ? '-'
-                                          : '$diterima', // tambah ini
+                                      count: isLoading ? '-' : '$diterima',
                                       label: 'Diterima',
                                       color: const Color(0xFF7C3AED),
                                     ),
@@ -285,7 +289,7 @@ class _DashboardCustState extends State<DashboardCust> {
                             ),
                           ),
 
-                          // Bottom navigation section
+                          // Bottom nav card
                           Container(
                             decoration: const BoxDecoration(
                               color: Color(0xFF1E2A5E),
@@ -302,16 +306,18 @@ class _DashboardCustState extends State<DashboardCust> {
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 InkWell(
-                                  onTap: () {},
+                                  onTap: () {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const MainScaffold(initialIndex: 1),
+                                      ),
+                                    );
+                                  },
                                   borderRadius: BorderRadius.circular(8),
-                                  splashColor: Colors.white.withValues(
-                                    alpha: 0.3,
-                                  ),
-                                  highlightColor: Colors.white.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
                                       horizontal: 8,
                                       vertical: 4,
                                     ),
@@ -322,13 +328,12 @@ class _DashboardCustState extends State<DashboardCust> {
                                           color: Colors.white,
                                           size: 24,
                                         ),
-                                        const SizedBox(width: 6),
-                                        const Text(
+                                        SizedBox(width: 6),
+                                        Text(
                                           'History pengaduan',
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontSize: 12,
-                                            fontWeight: FontWeight.w400,
                                           ),
                                         ),
                                       ],
@@ -348,14 +353,8 @@ class _DashboardCustState extends State<DashboardCust> {
                                     ).pushNamed('/history_rating');
                                   },
                                   borderRadius: BorderRadius.circular(8),
-                                  splashColor: Colors.white.withValues(
-                                    alpha: 0.3,
-                                  ),
-                                  highlightColor: Colors.white.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
                                       horizontal: 8,
                                       vertical: 4,
                                     ),
@@ -366,13 +365,12 @@ class _DashboardCustState extends State<DashboardCust> {
                                           color: Colors.white,
                                           size: 24,
                                         ),
-                                        const SizedBox(width: 6),
-                                        const Text(
+                                        SizedBox(width: 6),
+                                        Text(
                                           'History Rating',
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontSize: 12,
-                                            fontWeight: FontWeight.w400,
                                           ),
                                         ),
                                       ],
@@ -389,7 +387,6 @@ class _DashboardCustState extends State<DashboardCust> {
                 ),
               ),
 
-              // SizedBox disesuaikan dengan offset baru (-40)
               const SizedBox(height: 10),
 
               // Graph section
@@ -410,11 +407,11 @@ class _DashboardCustState extends State<DashboardCust> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       children: [
                         Icon(Icons.bar_chart, size: 24, color: Colors.black),
-                        const SizedBox(width: 8),
-                        const Text(
+                        SizedBox(width: 8),
+                        Text(
                           'Graph Pengaduan Internet',
                           style: TextStyle(
                             color: Colors.black,
@@ -425,7 +422,6 @@ class _DashboardCustState extends State<DashboardCust> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    // --- FETCH: grafik bulanan ---
                     Container(
                       height: 200,
                       decoration: BoxDecoration(
@@ -450,7 +446,9 @@ class _DashboardCustState extends State<DashboardCust> {
                 ),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(
+                height: 100,
+              ), // ✅ padding bawah agar FAB tidak nutup konten
             ],
           ),
         ),
@@ -521,11 +519,7 @@ class _DashboardCustState extends State<DashboardCust> {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF464646),
-            fontSize: 15,
-            fontWeight: FontWeight.w400,
-          ),
+          style: const TextStyle(color: Color(0xFF464646), fontSize: 15),
         ),
       ],
     );
